@@ -1,8 +1,5 @@
 #include "window.hpp"
 
-#include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
-
 #include <stdexcept>
 #include <string>
 

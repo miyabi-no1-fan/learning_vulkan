@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdint>
 #include <string>
 
@@ -22,6 +21,8 @@ class Window {
 
     bool should_close() { return glfwWindowShouldClose(window); }
     void poll_events() { return glfwPollEvents(); }
+
+    VkExtent2D get_extent() { return VkExtent2D{ width, height }; }
 
     void create_window_surface(VkInstance instance, VkSurfaceKHR* surface);
 

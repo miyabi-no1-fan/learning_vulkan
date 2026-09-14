@@ -1,5 +1,4 @@
 #pragma once
-
 #include <string>
 #include <vector>
 
@@ -8,7 +7,6 @@
 struct PipelineConfigInfo {
     VkViewport viewport;
     VkRect2D scissor;
-    VkPipelineViewportStateCreateInfo viewportInfo;
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
     VkPipelineRasterizationStateCreateInfo rasterizationInfo;
     VkPipelineMultisampleStateCreateInfo multisampleInfo;
@@ -35,6 +33,8 @@ class Pipeline {
 
     static PipelineConfigInfo default_config_info(uint32_t width, uint32_t height);
 
+    void bind(VkCommandBuffer command_buffer);
+
    private:
     Device& device;
     VkPipeline graphics_pipeline;
@@ -47,5 +47,5 @@ class Pipeline {
         const std::string& fragment_shader_path,
         const PipelineConfigInfo& config_info  //
     );
-    void create_shader_module(const std::string& code, VkShaderModule* shader_module);
+    void create_shader_module(const std::vector<char>& code, VkShaderModule* shader_module);
 };

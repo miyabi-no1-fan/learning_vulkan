@@ -1,41 +1,45 @@
 #pragma once
 #include <cstdint>
-#include <filesystem>
+#include <memory>
+#include <vector>
 
 #include "device.hpp"
+#include "model.hpp"
 #include "pipeline.hpp"
+#include "swap_chain.hpp"
 #include "window.hpp"
 
 class App {
+   private:
+    Window window{ WIDTH, HEIGHT, NAME };
+    Device device{ window };
+    SwapChain swap_chain{ device, window.get_extent() };
+    std::unique_ptr<Pipeline> pipeline{};
+    VkPipelineLayout pipeline_layout{};
+    std::vector<VkCommandBuffer> command_buffers{};
+    std::unique_ptr<Model> model{};
+
    public:
     static constexpr uint32_t WIDTH = 1920;
     static constexpr uint32_t HEIGHT = 1080;
     static constexpr const char* NAME = "test-app";
 
-    static constexpr const char* VERTEX_SHADER_SRC = "build/shaders/shader.vert.spv";
-    static constexpr const char* FRAGMENT_SHADER_SRC = "build/shaders/shader.vert.spv";
+    App();
+    ~App();
 
     App(const App&) = delete;
-    void operator=(const App&) = delete;
-
-    App() {
-        if (!std::filesystem::exists(VERTEX_SHADER_SRC)) {
-            throw std::runtime_error("Can't find shader file: " + std::string(VERTEX_SHADER_SRC));
-        }
-        if (!std::filesystem::exists(FRAGMENT_SHADER_SRC)) {
-            throw std::runtime_error("Can't find shader file: " + std::string(FRAGMENT_SHADER_SRC));
-        }
-    }
+    App& operator=(const App&) = delete;
 
     void run();
 
    private:
-    Window window{ WIDTH, HEIGHT, NAME };
-    Device device{ window };
-    Pipeline pipeline{
-        device,
-        VERTEX_SHADER_SRC,
-        FRAGMENT_SHADER_SRC,
-        Pipeline::default_config_info(WIDTH, HEIGHT)  //
-    };
+    static constexpr const char* VERTEX_SHADER_SRC = "shaders/dist/shader.vert.spv";
+    static constexpr const char* FRAGMENT_SHADER_SRC = "shaders/dist/shader.frag.spv";
+
+    void create_pipeline_layout();
+    void create_pipeline();
+    void create_command_buffers();
+    void draw_frame();
+
+    void load_models();
 };

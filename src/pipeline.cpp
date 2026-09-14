@@ -1,10 +1,13 @@
 #include "pipeline.hpp"
 
 #include <cassert>
+#include <cstdint>
 #include <fstream>
 #include <ios>
 #include <stdexcept>
 #include <string>
+
+#include "model.hpp"
 
 Pipeline::Pipeline(
     Device& device,
@@ -45,11 +48,8 @@ void Pipeline::create_graphics_pipeline(
     assert(config_info.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipelineLayout provide in config_info");
     assert(config_info.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no renderPass provide in config_info");
 
-    auto vertCode = read_file(vertex_shader_path);
-    auto fragCode = read_file(fragment_shader_path);
-
-    create_shader_module(vertCode.data(), &vertex_shader_module);
-    create_shader_module(fragCode.data(), &fragment_shader_module);
+    create_shader_module(read_file(vertex_shader_path), &vertex_shader_module);
+    create_shader_module(read_file(fragment_shader_path), &fragment_shader_module);
 
     VkPipelineShaderStageCreateInfo shader_stages[2];
     shader_stages[0] = {
@@ -72,15 +72,25 @@ void Pipeline::create_graphics_pipeline(
         .pSpecializationInfo = nullptr,
     };
 
+    auto binding_descriptions = Model::Vertex::get_binding_descriptions();
+    auto attribute_descriptions = Model::Vertex::get_attribute_descriptions();
+
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = nullptr,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = nullptr,
+        .vertexBindingDescriptionCount = static_cast<uint32_t>(binding_descriptions.size()),
+        .pVertexBindingDescriptions = binding_descriptions.data(),
+        .vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size()),
+        .pVertexAttributeDescriptions = attribute_descriptions.data(),
     };
+
+    VkPipelineViewportStateCreateInfo viewportInfo{};
+    viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportInfo.viewportCount = 1;
+    viewportInfo.pViewports = &config_info.viewport;
+    viewportInfo.scissorCount = 1;
+    viewportInfo.pScissors = &config_info.scissor;
 
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
@@ -91,7 +101,7 @@ void Pipeline::create_graphics_pipeline(
         .pVertexInputState = &vertex_input_info,
         .pInputAssemblyState = &config_info.inputAssemblyInfo,
         .pTessellationState = nullptr,
-        .pViewportState = &config_info.viewportInfo,
+        .pViewportState = &viewportInfo,
         .pRasterizationState = &config_info.rasterizationInfo,
         .pMultisampleState = &config_info.multisampleInfo,
         .pDepthStencilState = &config_info.depthStencilInfo,
@@ -112,7 +122,11 @@ void Pipeline::create_graphics_pipeline(
     }
 }
 
-void Pipeline::create_shader_module(const std::string& code, VkShaderModule* shader_module) {
+void Pipeline::bind(VkCommandBuffer command_buffer) {
+    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphics_pipeline);
+}
+
+void Pipeline::create_shader_module(const std::vector<char>& code, VkShaderModule* shader_module) {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.codeSize = code.size();
@@ -140,12 +154,6 @@ PipelineConfigInfo Pipeline::default_config_info(uint32_t width, uint32_t height
 
     configInfo.scissor.offset = { 0, 0 };
     configInfo.scissor.extent = { width, height };
-
-    configInfo.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    configInfo.viewportInfo.viewportCount = 1;
-    configInfo.viewportInfo.pViewports = &configInfo.viewport;
-    configInfo.viewportInfo.scissorCount = 1;
-    configInfo.viewportInfo.pScissors = &configInfo.scissor;
 
     configInfo.rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     configInfo.rasterizationInfo.depthClampEnable = VK_FALSE;
