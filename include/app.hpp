@@ -11,7 +11,7 @@
 
 class App {
    private:
-    Window window{ WIDTH, HEIGHT, NAME };
+    Window window{ WIDTH, HEIGHT, FPS, NAME };
     Device device{ window };
     SwapChain swap_chain{ device, window.get_extent() };
     std::unique_ptr<Pipeline> pipeline{};
@@ -22,6 +22,7 @@ class App {
    public:
     static constexpr uint32_t WIDTH = 1920;
     static constexpr uint32_t HEIGHT = 1080;
+    static constexpr uint32_t FPS = 60;
     static constexpr const char* NAME = "test-app";
 
     App();

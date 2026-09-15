@@ -30,10 +30,10 @@ void App::run() {
 }
 
 void App::load_models() {
-    std::vector<Model::Vertex> vertices{
-        { { -0.5f, 0.5f } },
-        { { 0.0f, -0.5f } },
-        { { 0.5f, 0.5f } },
+    std::vector<Model::Vertex> vertices = {
+        { { -0.5f, 0.5f }, { 1.0, 0.0, 0.0 } },
+        { { 0.0f, -0.5f }, { 0.0, 1.0, 0.0 } },
+        { { 0.5f, 0.5f }, { 0.0, 0.0, 1.0 } },
     };
     model = std::make_unique<Model>(device, vertices);
 }

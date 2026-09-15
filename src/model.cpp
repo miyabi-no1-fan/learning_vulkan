@@ -62,12 +62,18 @@ std::vector<VkVertexInputBindingDescription> Model::Vertex::get_binding_descript
 }
 
 std::vector<VkVertexInputAttributeDescription> Model::Vertex::get_attribute_descriptions() {
-    std::vector<VkVertexInputAttributeDescription> attribute_descriptions(1);
-    attribute_descriptions[0] = {
-        .location = 0,
-        .binding = 0,
-        .format = VK_FORMAT_R32G32_SFLOAT,
-        .offset = 0,
+    return {
+        {
+            .location = 0,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(Vertex, position),
+        },
+        {
+            .location = 1,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset = offsetof(Vertex, color),
+        }
     };
-    return attribute_descriptions;
 }

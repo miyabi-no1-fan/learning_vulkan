@@ -1,9 +1,16 @@
 #include "window.hpp"
 
+#include <chrono>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
-Window::Window(uint32_t width, uint32_t height, std::string name) : width(width), height(height), name(name) {
+Window::Window(uint32_t width, uint32_t height, uint32_t fps, std::string name)
+    : width(width),
+      height(height),
+      frame_time(std::chrono::duration<double>(1.0 / static_cast<double>(fps))),
+      name(name) {
     initWindow();
 }
 
@@ -31,4 +38,12 @@ void Window::create_window_surface(VkInstance instance, VkSurfaceKHR* surface) {
     if (res != VK_SUCCESS) {
         throw std::runtime_error("Failed to create window surface. Vulkan Error Code: " + std::to_string(res));
     }
+}
+
+void Window::poll_events() {
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed = end - start.value_or(end);
+    std::this_thread::sleep_for(frame_time - elapsed);
+    start = std::chrono::steady_clock::now();
+    return glfwPollEvents();
 }
