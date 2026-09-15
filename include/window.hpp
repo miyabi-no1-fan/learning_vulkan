@@ -15,6 +15,8 @@ class Window {
     std::chrono::duration<double> frame_time;
     std::optional<std::chrono::time_point<std::chrono::steady_clock>> start{};
 
+    bool frame_buffer_resized = false;
+
     std::string name;
 
    public:
@@ -29,8 +31,12 @@ class Window {
 
     VkExtent2D get_extent() { return VkExtent2D{ width, height }; }
 
+    bool was_window_resized() { return frame_buffer_resized; }
+    void reset_window_resized_flag() { frame_buffer_resized = false; }
+
     void create_window_surface(VkInstance instance, VkSurfaceKHR* surface);
 
    private:
     void initWindow();
+    static void frame_buffer_resize_callback(GLFWwindow* window_, int width, int height);
 };

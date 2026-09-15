@@ -5,14 +5,15 @@
 #include <iostream>
 #include <stdexcept>
 
-SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent)
+SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::unique_ptr<SwapChain>&& oldSwapchain)
     : device{ deviceRef }, windowExtent{ extent } {
-    createSwapChain();
+    createSwapChain(oldSwapchain);
     createImageViews();
     createRenderPass();
     createDepthResources();
     createFramebuffers();
     createSyncObjects();
+    oldSwapchain = nullptr;
 }
 
 SwapChain::~SwapChain() {
@@ -111,7 +112,7 @@ VkResult SwapChain::submitCommandBuffers(
     return result;
 }
 
-void SwapChain::createSwapChain() {
+void SwapChain::createSwapChain(const std::unique_ptr<SwapChain>& oldSwapchain) {
     SwapChainSupportDetails swapChainSupport = device.getSwapChainSupport();
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -154,7 +155,7 @@ void SwapChain::createSwapChain() {
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
 
-    createInfo.oldSwapchain = VK_NULL_HANDLE;
+    createInfo.oldSwapchain = (oldSwapchain) ? oldSwapchain->swapChain : VK_NULL_HANDLE;
 
     if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS) {
         throw std::runtime_error("failed to create swap chain!");
@@ -367,11 +368,16 @@ VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(
     return availableFormats[0];
 }
 
+bool _present_mode_printed = false;
+
 VkPresentModeKHR SwapChain::chooseSwapPresentMode(
     const std::vector<VkPresentModeKHR>& availablePresentModes) {
     for (const auto& availablePresentMode : availablePresentModes) {
         if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            std::cout << "Present mode: Mailbox" << std::endl;
+            if (!_present_mode_printed) {
+                std::cout << "Present mode: Mailbox" << std::endl;
+                _present_mode_printed = true;
+            }
             return availablePresentMode;
         }
     }

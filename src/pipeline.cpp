@@ -1,5 +1,7 @@
 #include "pipeline.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include <cassert>
 #include <cstdint>
 #include <fstream>
@@ -85,13 +87,6 @@ void Pipeline::create_graphics_pipeline(
         .pVertexAttributeDescriptions = attribute_descriptions.data(),
     };
 
-    VkPipelineViewportStateCreateInfo viewportInfo{};
-    viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportInfo.viewportCount = 1;
-    viewportInfo.pViewports = &config_info.viewport;
-    viewportInfo.scissorCount = 1;
-    viewportInfo.pScissors = &config_info.scissor;
-
     VkGraphicsPipelineCreateInfo pipeline_info = {
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = nullptr,
@@ -101,12 +96,12 @@ void Pipeline::create_graphics_pipeline(
         .pVertexInputState = &vertex_input_info,
         .pInputAssemblyState = &config_info.inputAssemblyInfo,
         .pTessellationState = nullptr,
-        .pViewportState = &viewportInfo,
+        .pViewportState = &config_info.viewportInfo,
         .pRasterizationState = &config_info.rasterizationInfo,
         .pMultisampleState = &config_info.multisampleInfo,
         .pDepthStencilState = &config_info.depthStencilInfo,
         .pColorBlendState = &config_info.colorBlendInfo,
-        .pDynamicState = nullptr,
+        .pDynamicState = &config_info.dynamicStateInfo,
         .layout = config_info.pipelineLayout,
         .renderPass = config_info.renderPass,
         .subpass = config_info.subpass,
@@ -138,22 +133,16 @@ void Pipeline::create_shader_module(const std::vector<char>& code, VkShaderModul
     }
 }
 
-PipelineConfigInfo Pipeline::default_config_info(uint32_t width, uint32_t height) {
-    PipelineConfigInfo configInfo{};
-
+void Pipeline::default_pipeline_config_info(PipelineConfigInfo& configInfo) {
     configInfo.inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     configInfo.inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-    configInfo.viewport.x = 0.0f;
-    configInfo.viewport.y = 0.0f;
-    configInfo.viewport.width = static_cast<float>(width);
-    configInfo.viewport.height = static_cast<float>(height);
-    configInfo.viewport.minDepth = 0.0f;
-    configInfo.viewport.maxDepth = 1.0f;
-
-    configInfo.scissor.offset = { 0, 0 };
-    configInfo.scissor.extent = { width, height };
+    configInfo.viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    configInfo.viewportInfo.viewportCount = 1;
+    configInfo.viewportInfo.pViewports = nullptr;
+    configInfo.viewportInfo.scissorCount = 1;
+    configInfo.viewportInfo.pScissors = nullptr;
 
     configInfo.rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     configInfo.rasterizationInfo.depthClampEnable = VK_FALSE;
@@ -207,5 +196,12 @@ PipelineConfigInfo Pipeline::default_config_info(uint32_t width, uint32_t height
     configInfo.depthStencilInfo.front = {};  // Optional
     configInfo.depthStencilInfo.back = {};   // Optional
 
-    return configInfo;
+    configInfo.dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    configInfo.dynamicStateInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .dynamicStateCount = static_cast<uint32_t>(configInfo.dynamicStateEnables.size()),
+        .pDynamicStates = configInfo.dynamicStateEnables.data(),
+    };
 }
