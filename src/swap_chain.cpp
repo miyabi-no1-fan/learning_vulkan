@@ -5,7 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 
-SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::unique_ptr<SwapChain>&& oldSwapchain)
+SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, const std::shared_ptr<SwapChain>& oldSwapchain)
     : device{ deviceRef }, windowExtent{ extent } {
     createSwapChain(oldSwapchain);
     createImageViews();
@@ -13,7 +13,6 @@ SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::unique_ptr<SwapC
     createDepthResources();
     createFramebuffers();
     createSyncObjects();
-    oldSwapchain = nullptr;
 }
 
 SwapChain::~SwapChain() {
@@ -112,7 +111,7 @@ VkResult SwapChain::submitCommandBuffers(
     return result;
 }
 
-void SwapChain::createSwapChain(const std::unique_ptr<SwapChain>& oldSwapchain) {
+void SwapChain::createSwapChain(const std::shared_ptr<SwapChain>& oldSwapchain) {
     SwapChainSupportDetails swapChainSupport = device.getSwapChainSupport();
 
     VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -281,7 +280,7 @@ void SwapChain::createFramebuffers() {
 }
 
 void SwapChain::createDepthResources() {
-    VkFormat depthFormat = findDepthFormat();
+    swapChainDepthFormat = findDepthFormat();
     VkExtent2D swapChainExtent = getSwapChainExtent();
 
     depthImages.resize(imageCount());
@@ -297,7 +296,7 @@ void SwapChain::createDepthResources() {
         imageInfo.extent.depth = 1;
         imageInfo.mipLevels = 1;
         imageInfo.arrayLayers = 1;
-        imageInfo.format = depthFormat;
+        imageInfo.format = swapChainDepthFormat;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -315,7 +314,7 @@ void SwapChain::createDepthResources() {
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = depthImages[i];
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format = depthFormat;
+        viewInfo.format = swapChainDepthFormat;
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
