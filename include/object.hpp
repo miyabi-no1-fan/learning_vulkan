@@ -2,11 +2,8 @@
 #include <cstdint>
 #include <memory>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-
 #include "model.hpp"
+#include "transform.hpp"
 
 class Object {
    public:
@@ -26,10 +23,7 @@ class Object {
 
     std::shared_ptr<Model> model{};
 
-    struct PushConstant {
-        alignas(16) glm::mat2x2 matrix{ 1.0f };
-        alignas(8) glm::vec2 shift{};
-    } transform2d{};
+    Transform transform{};
 
    private:
     id_t id;

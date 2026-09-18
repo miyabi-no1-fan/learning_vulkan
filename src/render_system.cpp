@@ -6,6 +6,12 @@
 #include <string>
 #include <vector>
 
+#include "transform.hpp"
+
+struct PushConstant {
+    glm::mat4x4 mat{ 1.0f };
+};
+
 RenderSystem::RenderSystem(Device& device, VkRenderPass renderpass) : device(device) {
     create_pipeline_layout();
     create_pipeline(renderpass);
@@ -19,7 +25,7 @@ void RenderSystem::create_pipeline_layout() {
     VkPushConstantRange push_constant_range{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(Object::PushConstant),
+        .size = sizeof(PushConstant),
     };
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{
@@ -60,13 +66,19 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
 void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects) {
     pipeline->bind(command_buffer);
     for (auto&& object : objects) {
+        object.transform.rotate(0.01f, Transform::Oxz);
+        object.transform.rotate(0.005f, Transform::Oyz);
+
+        PushConstant push{};
+        push.mat = object.transform.mat;
+
         vkCmdPushConstants(
             command_buffer,
             pipeline_layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(Object::PushConstant),
-            &object.transform2d  //
+            sizeof(PushConstant),
+            &push  //
         );
         object.model->bind(command_buffer);
         object.model->draw(command_buffer);

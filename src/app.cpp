@@ -1,15 +1,10 @@
 #include "app.hpp"
 
-#include <cmath>
 #include <memory>
-#include <numbers>
 #include <vector>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-
 #include "render_system.hpp"
+#include "transform.hpp"
 
 App::App() {
     load_objects();
@@ -36,38 +31,61 @@ void App::run() {
 }
 
 void App::load_objects() {
-    auto triangle_model = std::make_shared<Model>(
-        device,
-        std::vector<Model::Vertex>{
-            { { -1.0f, 1.0f }, { 1.0, 1.0, 0.0 } },
-            { { 1.0f, 1.0f }, { 1.0, 1.0, 0.0 } },
-            { { 1.0f, -1.0f }, { 1.0, 1.0, 0.0 } },
-        }  //
-    );
+    std::vector<Model::Vertex> vertices{
 
-    {
-        Object triangle{};
-        triangle.model = triangle_model;
-        triangle.transform2d.matrix = { 0.5f };
-        triangle.transform2d.shift = { 0.0f, 0.0f };
-        objects.push_back(std::move(triangle));
-    }
+        // left face (white)
+        { { -.5f, -.5f, -.5f }, { .9f, .9f, .9f } },
+        { { -.5f, .5f, .5f }, { .9f, .9f, .9f } },
+        { { -.5f, -.5f, .5f }, { .9f, .9f, .9f } },
+        { { -.5f, -.5f, -.5f }, { .9f, .9f, .9f } },
+        { { -.5f, .5f, -.5f }, { .9f, .9f, .9f } },
+        { { -.5f, .5f, .5f }, { .9f, .9f, .9f } },
 
-    {
-        glm::mat2x2 mat;
-        {
-            float angle = std::numbers::pi;
-            auto rotate = glm::mat2x2({
-                { std::cos(angle), -std::sin(angle) },
-                { std::sin(angle), std::cos(angle) },
-            });
-            mat = rotate * 0.5f;
-        }
+        // right face (yellow)
+        { { .5f, -.5f, -.5f }, { .8f, .8f, .1f } },
+        { { .5f, .5f, .5f }, { .8f, .8f, .1f } },
+        { { .5f, -.5f, .5f }, { .8f, .8f, .1f } },
+        { { .5f, -.5f, -.5f }, { .8f, .8f, .1f } },
+        { { .5f, .5f, -.5f }, { .8f, .8f, .1f } },
+        { { .5f, .5f, .5f }, { .8f, .8f, .1f } },
 
-        Object triangle{};
-        triangle.model = triangle_model;
-        triangle.transform2d.matrix = mat;
-        triangle.transform2d.shift = { 0.0f, 0.0f };
-        objects.push_back(std::move(triangle));
-    }
+        // top face (orange)
+        { { -.5f, -.5f, -.5f }, { .9f, .6f, .1f } },
+        { { .5f, -.5f, .5f }, { .9f, .6f, .1f } },
+        { { -.5f, -.5f, .5f }, { .9f, .6f, .1f } },
+        { { -.5f, -.5f, -.5f }, { .9f, .6f, .1f } },
+        { { .5f, -.5f, -.5f }, { .9f, .6f, .1f } },
+        { { .5f, -.5f, .5f }, { .9f, .6f, .1f } },
+
+        // bottom face (red)
+        { { -.5f, .5f, -.5f }, { .8f, .1f, .1f } },
+        { { .5f, .5f, .5f }, { .8f, .1f, .1f } },
+        { { -.5f, .5f, .5f }, { .8f, .1f, .1f } },
+        { { -.5f, .5f, -.5f }, { .8f, .1f, .1f } },
+        { { .5f, .5f, -.5f }, { .8f, .1f, .1f } },
+        { { .5f, .5f, .5f }, { .8f, .1f, .1f } },
+
+        // nose face (blue)
+        { { -.5f, -.5f, 0.5f }, { .1f, .1f, .8f } },
+        { { .5f, .5f, 0.5f }, { .1f, .1f, .8f } },
+        { { -.5f, .5f, 0.5f }, { .1f, .1f, .8f } },
+        { { -.5f, -.5f, 0.5f }, { .1f, .1f, .8f } },
+        { { .5f, -.5f, 0.5f }, { .1f, .1f, .8f } },
+        { { .5f, .5f, 0.5f }, { .1f, .1f, .8f } },
+
+        // tail face (green)
+        { { -.5f, -.5f, -0.5f }, { .1f, .8f, .1f } },
+        { { .5f, .5f, -0.5f }, { .1f, .8f, .1f } },
+        { { -.5f, .5f, -0.5f }, { .1f, .8f, .1f } },
+        { { -.5f, -.5f, -0.5f }, { .1f, .8f, .1f } },
+        { { .5f, -.5f, -0.5f }, { .1f, .8f, .1f } },
+        { { .5f, .5f, -0.5f }, { .1f, .8f, .1f } },
+
+    };
+
+    Object cube{};
+    cube.model = std::make_shared<Model>(device, vertices);
+    cube.transform.scale({ .5f, .5f, .5f });
+    cube.transform.offset(.0f, .0f, .5f);
+    objects.push_back(std::move(cube));
 }
