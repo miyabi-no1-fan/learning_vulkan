@@ -19,7 +19,7 @@ void RenderSystem::create_pipeline_layout() {
     VkPushConstantRange push_constant_range{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(PushConstant),
+        .size = sizeof(Object::PushConstant),
     };
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{
@@ -57,19 +57,18 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
     );
 }
 
-void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<std::unique_ptr<Object>>& objects) {
+void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects) {
     pipeline->bind(command_buffer);
     for (auto&& object : objects) {
-        object->render();
         vkCmdPushConstants(
             command_buffer,
             pipeline_layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(PushConstant),
-            &push_constant  //
+            sizeof(Object::PushConstant),
+            &object.transform2d  //
         );
-        object->model->bind(command_buffer);
-        object->model->draw(command_buffer);
+        object.model->bind(command_buffer);
+        object.model->draw(command_buffer);
     }
 }

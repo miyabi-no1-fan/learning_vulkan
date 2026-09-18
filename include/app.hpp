@@ -1,7 +1,6 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 #include "device.hpp"
@@ -15,7 +14,7 @@ class App {
     Device device{ window };
     Renderer renderer{ window, device };
 
-    std::vector<std::unique_ptr<Object>> objects{};
+    std::vector<Object> objects{};
 
    public:
     static constexpr uint32_t WIDTH = 1920;

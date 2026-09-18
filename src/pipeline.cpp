@@ -1,7 +1,5 @@
 #include "pipeline.hpp"
 
-#include <vulkan/vulkan_core.h>
-
 #include <cassert>
 #include <cstdint>
 #include <fstream>
