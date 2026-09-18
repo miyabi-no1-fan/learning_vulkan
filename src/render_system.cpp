@@ -66,11 +66,12 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
 void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects) {
     pipeline->bind(command_buffer);
     for (auto&& object : objects) {
-        object.transform.rotate(0.01f, Transform::Oxz);
-        object.transform.rotate(0.005f, Transform::Oyz);
+        object.transform.rotate.x += .005f;
+        object.transform.rotate.y += .01f;
+        object.transform.rotate.z += .003f;
 
         PushConstant push{};
-        push.mat = object.transform.mat;
+        push.mat = object.transform.mat();
 
         vkCmdPushConstants(
             command_buffer,

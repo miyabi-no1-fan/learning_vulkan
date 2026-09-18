@@ -5,15 +5,8 @@
 #include <glm/glm.hpp>
 
 struct Transform {
-    glm::mat4x4 mat{ 1.0f };
-
-    enum Planes {
-        Oxy,
-        Oxz,
-        Oyz,
-    };
-
-    void offset(float dx, float dy, float dz);
-    void rotate(float rad, Planes p);
-    void scale(glm::vec3 scalar);
+    glm::vec3 offset{};
+    glm::vec3 rotate{};
+    glm::vec3 scalar{ 1.f, 1.f, 1.f };
+    glm::mat4 mat();
 };

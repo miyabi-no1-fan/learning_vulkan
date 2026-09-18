@@ -85,7 +85,7 @@ void App::load_objects() {
 
     Object cube{};
     cube.model = std::make_shared<Model>(device, vertices);
-    cube.transform.scale({ .5f, .5f, .5f });
-    cube.transform.offset(.0f, .0f, .5f);
+    cube.transform.scalar = { .5f, .5f, .5f };
+    cube.transform.offset = { .0f, .0f, .5f };
     objects.push_back(std::move(cube));
 }
