@@ -1,76 +1,34 @@
 #include "transform.hpp"
 
-enum Planes {
-    Oxy,
-    Oxz,
-    Oyz,
-};
-
-glm::mat4 rotate_mat(float rad, Planes p);
-
+// Matrix corrsponds to Offset * Ry * Rx * Rz * Scalar
+// Rotations correspond to Tait-bryan angles of Y(1), X(2), Z(3)
+// https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
 glm::mat4 Transform::mat() {
-    glm::mat4 transform{ 1.f };
-
-    transform =
-        rotate_mat(rotate.z, Planes::Oxy) *
-        rotate_mat(rotate.y, Planes::Oxz) *
-        rotate_mat(rotate.x, Planes::Oyz);
-
-    transform = {
-        scalar.x * transform[0],
-        scalar.y * transform[1],
-        scalar.z * transform[2],
-        transform[3],
+    const float c3 = glm::cos(rotate.z);
+    const float s3 = glm::sin(rotate.z);
+    const float c2 = glm::cos(rotate.x);
+    const float s2 = glm::sin(rotate.x);
+    const float c1 = glm::cos(rotate.y);
+    const float s1 = glm::sin(rotate.y);
+    return glm::mat4{
+        {
+            scalar.x * (c1 * c3 + s1 * s2 * s3),
+            scalar.x * (c2 * s3),
+            scalar.x * (c1 * s2 * s3 - c3 * s1),
+            0.0f,
+        },
+        {
+            scalar.y * (c3 * s1 * s2 - c1 * s3),
+            scalar.y * (c2 * c3),
+            scalar.y * (c1 * c3 * s2 + s1 * s3),
+            0.0f,
+        },
+        {
+            scalar.z * (c2 * s1),
+            scalar.z * (-s2),
+            scalar.z * (c1 * c2),
+            0.0f,
+        },
+        { offset.x, offset.y, offset.z, 1.0f }
     };
-
-    transform[3][0] += offset.x;
-    transform[3][1] += offset.y;
-    transform[3][2] += offset.z;
-
-    return transform;
-}
-
-glm::mat4 rotate_mat(float rad, Planes p) {
-    // stupid glm use column-major
-    switch (p) {
-        case Planes::Oxy:
-            return glm::mat4x4{
-                { cos(rad), sin(rad), 0.f, 0.f },
-                { -sin(rad), cos(rad), 0.f, 0.f },
-                { 0.f, 0.f, 1.f, 0.f },
-                { 0.f, 0.f, 0.f, 1.f },
-            };
-            // return glm::transpose(glm::mat4x4{
-            //     { cos(rad), -sin(rad), 0.f, 0.f },
-            //     { sin(rad), cos(rad), 0.f, 0.f },
-            //     { 0.f,      0.f,      1.f, 0.f },
-            //     { 0.f,      0.f,      0.f, 1.f },
-            // });
-        case Planes::Oxz:
-            return glm::mat4x4{
-                { cos(rad), 0.f, sin(rad), 0.f },
-                { 0.f, 1.f, 0.f, 0.f },
-                { -sin(rad), 0.f, cos(rad), 0.f },
-                { 0.f, 0.f, 0.f, 1.f },
-            };
-            // return glm::transpose(glm::mat4x4{
-            //     { cos(rad), 0.f, -sin(rad), 0.f },
-            //     { 0.f,      1.f, 0.f,      0.f },
-            //     { sin(rad), 0.f, cos(rad), 0.f },
-            //     { 0.f,      0.f, 0.f,      1.f },
-            // });
-        case Planes::Oyz:
-            return glm::mat4x4{
-                { 1.f, 0.f, 0.f, 0.f },
-                { 0.f, cos(rad), sin(rad), 0.f },
-                { 0.f, -sin(rad), cos(rad), 0.f },
-                { 0.f, 0.f, 0.f, 1.f },
-            };
-            // return glm::transpose(glm::mat4x4{
-            //     { 1.f, 0.f,      0.f,       0.f },
-            //     { 0.f, cos(rad), -sin(rad), 0.f },
-            //     { 0.f, sin(rad), cos(rad), 0.f },
-            //     { 0.f, 0.f,      0.f,      1.f },
-            // });
-    }
 }
