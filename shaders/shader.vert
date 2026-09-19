@@ -2,6 +2,8 @@
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 color;
+layout(location = 2) in vec3 normal;
+layout(location = 3) in vec3 texcoord;
 
 layout(location = 1) out vec3 frag_color;
 
@@ -11,6 +13,9 @@ layout(push_constant) uniform Push {
     vec3 scale;
     mat4 projection_view;
 };
+
+const vec3 DIRECTION_TO_LIGHT = normalize(vec3(1.0, -3.0, -1.0));
+const float AMBIENT = 0.02;
 
 // Matrix corrsponds to Offset * Ry * Rx * Rz * Scalar
 // Rotations correspond to Tait-bryan angles of Y(1), X(2), Z(3)
@@ -47,6 +52,13 @@ mat4 transform() {
 }
 
 void main() {
-    gl_Position = projection_view * transform() * vec4(position, 1.0);
-    frag_color = color;
+    mat4 model = transform();
+    vec4 position_in_world_space = model * vec4(position, 1.0);
+    gl_Position = projection_view * position_in_world_space;
+
+    vec3 normal = normalize((model * vec4(normal, 0.0)).xyz);
+
+    float light_intensity = AMBIENT + max(dot(normal, DIRECTION_TO_LIGHT), 0.0);
+
+    frag_color = light_intensity * color;
 }

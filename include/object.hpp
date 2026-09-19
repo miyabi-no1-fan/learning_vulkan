@@ -36,7 +36,9 @@ class Object {
     } transform{};
     static_assert(sizeof(Transform) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
 
-    std::function<void(Object& object, float dt, const glm::mat4x4& projection_view)> render;
+    std::function<void(Object& object, float dt, const glm::mat4x4& projection_view)> render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
+        object.transform.projection_view = projection_view;
+    };
 
    private:
     id_t id;

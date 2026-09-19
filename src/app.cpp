@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <memory>
 #include <numbers>
 #include <vector>
@@ -53,82 +52,36 @@ void App::run() {
     auto _ = vkDeviceWaitIdle(device.device());
 }
 
-void App::load_objects() {
+Object create_floor(Device& device) {
     Model::Builder builder{};
-
     builder.vertices = {
-        // left face (white)
-        { { -.5f, -.5f, -.5f }, { .9f, .9f, .9f } },
-        { { -.5f, .5f, .5f }, { .9f, .9f, .9f } },
-        { { -.5f, -.5f, .5f }, { .9f, .9f, .9f } },
-        { { -.5f, .5f, -.5f }, { .9f, .9f, .9f } },
-
-        // right face (yellow)
-        { { .5f, -.5f, -.5f }, { .8f, .8f, .1f } },
-        { { .5f, .5f, .5f }, { .8f, .8f, .1f } },
-        { { .5f, -.5f, .5f }, { .8f, .8f, .1f } },
-        { { .5f, .5f, -.5f }, { .8f, .8f, .1f } },
-
-        // top face (orange)
-        { { -.5f, -.5f, -.5f }, { .9f, .6f, .1f } },
-        { { .5f, -.5f, .5f }, { .9f, .6f, .1f } },
-        { { -.5f, -.5f, .5f }, { .9f, .6f, .1f } },
-        { { .5f, -.5f, -.5f }, { .9f, .6f, .1f } },
-
-        // bottom face (red)
-        { { -.5f, .5f, -.5f }, { .8f, .1f, .1f } },
-        { { .5f, .5f, .5f }, { .8f, .1f, .1f } },
-        { { -.5f, .5f, .5f }, { .8f, .1f, .1f } },
-        { { .5f, .5f, -.5f }, { .8f, .1f, .1f } },
-
-        // nose face (blue)
-        { { -.5f, -.5f, 0.5f }, { .1f, .1f, .8f } },
-        { { .5f, .5f, 0.5f }, { .1f, .1f, .8f } },
-        { { -.5f, .5f, 0.5f }, { .1f, .1f, .8f } },
-        { { .5f, -.5f, 0.5f }, { .1f, .1f, .8f } },
-
-        // tail face (green)
-        { { -.5f, -.5f, -0.5f }, { .1f, .8f, .1f } },
-        { { .5f, .5f, -0.5f }, { .1f, .8f, .1f } },
-        { { -.5f, .5f, -0.5f }, { .1f, .8f, .1f } },
-        { { .5f, -.5f, -0.5f }, { .1f, .8f, .1f } },
-    };
-    builder.indices = { 0, 1, 2, 0, 3, 1, 4, 5, 6, 4, 7, 5, 8, 9, 10, 8, 11, 9, 12, 13, 14, 12, 15, 13, 16, 17, 18, 16, 19, 17, 20, 21, 22, 20, 23, 21 };
-
-    {
-        Object cube{};
-        cube.model = std::make_shared<Model>(device, builder);
-        cube.transform.scale = { .5f, .5f, .5f };
-        cube.transform.translation = { .0f, .0f, 2.5f };
-        cube.render = [](Object& object, float dt, const glm::mat4x4& projection_view) -> void {
-            object.transform.projection_view = projection_view;
-            object.transform.rotation.y += dt * .9f;
-
-            for (int i = 0; i < object.transform.rotation.length(); i++) {
-                object.transform.rotation[i] =
-                    std::fmodf(object.transform.rotation[i],
-                               static_cast<float>(std::numbers::pi) * 2.f);
-            }
-        };
-        objects.push_back(std::move(cube));
-    }
-
-    builder.vertices = {
-        { { -10.f, .5f, -10.f }, { .9f, .9f, .9f } },
-        { { 10.f, .5f, 10.f }, { .9f, .9f, .9f } },
-        { { -10.f, .5f, 10.f }, { .9f, .9f, .9f } },
-        { { 10.f, .5f, -10.f }, { .9f, .9f, .9f } },
+        { { -10.f, 1.0f, -10.f }, { .9f, .9f, .0f } },
+        { { 10.f, 1.0f, 10.f }, { .9f, .9f, .0f } },
+        { { -10.f, 1.0f, 10.f }, { .9f, .9f, .0f } },
+        { { 10.f, 1.0f, -10.f }, { .9f, .9f, .0f } },
     };
     builder.indices = { 0, 1, 2, 0, 3, 1 };
+    Object floor{};
+    floor.model = std::make_shared<Model>(device, builder);
+    floor.transform.scale = { .5f, .5f, .5f };
+    floor.transform.translation = { .0f, .0f, 2.5f };
+    floor.render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
+        object.transform.projection_view = projection_view;
+    };
+    return floor;
+}
 
-    {
-        Object floor{};
-        floor.model = std::make_shared<Model>(device, builder);
-        floor.transform.scale = { .5f, .5f, .5f };
-        floor.transform.translation = { .0f, .0f, 2.5f };
-        floor.render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
-            object.transform.projection_view = projection_view;
-        };
-        objects.push_back(std::move(floor));
+void App::load_objects() {
+    std::vector<std::string> paths = {
+        "models/colored_cube.obj",
+        "models/cube.obj",
+        "models/firee.obj",
+        "models/flat_vase.obj",
+        "models/smooth_vase.obj",
+    };
+    for (auto&& path : paths) {
+        Object obj{};
+        obj.model = Model::create_model_from_file(device, path);
+        objects.push_back(std::move(obj));
     }
 }
