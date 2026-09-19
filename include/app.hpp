@@ -10,7 +10,7 @@
 
 class App {
    private:
-    Window window{ WIDTH, HEIGHT, FPS, NAME };
+    Window window{ WIDTH, HEIGHT, 0.f, NAME };
     Device device{ window };
     Renderer renderer{ window, device };
 
@@ -19,8 +19,8 @@ class App {
    public:
     static constexpr uint32_t WIDTH = 1920;
     static constexpr uint32_t HEIGHT = 1080;
-    static constexpr uint32_t FPS = 60;
-    static constexpr float FRAME_TIME = 1.0f / FPS;
+    static constexpr uint32_t MAX_FPS = 60;
+    static constexpr double MAX_FRAME_TIME = 1.0 / MAX_FPS;
     static constexpr const char* NAME = "test-app";
 
     App();

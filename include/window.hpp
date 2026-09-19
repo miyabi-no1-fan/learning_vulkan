@@ -13,18 +13,23 @@ class Window {
     uint32_t width;
     uint32_t height;
     std::chrono::duration<double> frame_time;
-    std::optional<std::chrono::time_point<std::chrono::steady_clock>> start{};
+    std::optional<std::chrono::time_point<std::chrono::steady_clock>> start_time{};
 
     bool frame_buffer_resized = false;
 
     std::string name;
 
    public:
-    Window(uint32_t width, uint32_t height, uint32_t fps, std::string name);
+    Window(uint32_t width, uint32_t height, double frame_time, std::string name);
     ~Window();
 
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
+
+    uint32_t get_width() const { return width; }
+    uint32_t get_height() const { return height; }
+
+    GLFWwindow* get_GLFWwindow() const { return window; }
 
     bool should_close() { return glfwWindowShouldClose(window); }
     void poll_events();

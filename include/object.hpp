@@ -1,9 +1,13 @@
 #pragma once
 #include <cstdint>
+#include <functional>
 #include <memory>
 
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+
 #include "model.hpp"
-#include "transform.hpp"
 
 class Object {
    public:
@@ -23,7 +27,16 @@ class Object {
 
     std::shared_ptr<Model> model{};
 
-    Transform transform{};
+    struct Transform {
+        // search for intrinsics rotation and extrinsics rotation
+        alignas(16) glm::vec3 rotation{};
+        alignas(16) glm::vec3 translation{};
+        alignas(16) glm::vec3 scale{ 1.f, 1.f, 1.f };
+        alignas(16) glm::mat4x4 projection_view{ 1.f };
+    } transform{};
+    static_assert(sizeof(Transform) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
+
+    std::function<void(Object& object, float dt, const glm::mat4x4& projection_view)> render;
 
    private:
     id_t id;

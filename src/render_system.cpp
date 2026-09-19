@@ -6,11 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "transform.hpp"
-
-struct PushConstant {
-    glm::mat4x4 mat{ 1.0f };
-};
+#include "object.hpp"
 
 RenderSystem::RenderSystem(Device& device, VkRenderPass renderpass) : device(device) {
     create_pipeline_layout();
@@ -25,7 +21,7 @@ void RenderSystem::create_pipeline_layout() {
     VkPushConstantRange push_constant_range{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(PushConstant),
+        .size = sizeof(Object::Transform),
     };
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{
@@ -63,23 +59,18 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
     );
 }
 
-void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects) {
+void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects, const Camera& camera, float dt) {
+    const glm::mat4x4 projection_view = camera.get_projection() * camera.get_view();
     pipeline->bind(command_buffer);
     for (auto&& object : objects) {
-        object.transform.rotate.x += .005f;
-        object.transform.rotate.y += .01f;
-        object.transform.rotate.z += .003f;
-
-        PushConstant push{};
-        push.mat = object.transform.mat();
-
+        object.render(object, dt, projection_view);
         vkCmdPushConstants(
             command_buffer,
             pipeline_layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(PushConstant),
-            &push  //
+            sizeof(Object::Transform),
+            &object.transform  //
         );
         object.model->bind(command_buffer);
         object.model->draw(command_buffer);

@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 
+#include "camera.hpp"
 #include "device.hpp"
 #include "object.hpp"
 #include "pipeline.hpp"
@@ -19,7 +20,7 @@ class RenderSystem {
     RenderSystem(const RenderSystem&) = delete;
     RenderSystem& operator=(const RenderSystem&) = delete;
 
-    void render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects);
+    void render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects, const Camera& camera, float dt);
 
    private:
     static constexpr const char* VERTEX_SHADER_SRC = "shaders/dist/shader.vert.spv";

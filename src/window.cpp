@@ -1,15 +1,19 @@
 #include "window.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <chrono>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <thread>
 
-Window::Window(uint32_t width, uint32_t height, uint32_t fps, std::string name)
+Window::Window(uint32_t width, uint32_t height, double frame_time, std::string name)
     : width(width),
       height(height),
-      frame_time(std::chrono::duration<double>(1.0 / static_cast<double>(fps))),
+      frame_time(std::chrono::duration<double>(frame_time)),
       name(name) {
     initWindow();
 }
@@ -32,6 +36,8 @@ void Window::initWindow() {
         throw std::runtime_error("window creation failed");
     }
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, frame_buffer_resize_callback);
 }
@@ -44,10 +50,17 @@ void Window::create_window_surface(VkInstance instance, VkSurfaceKHR* surface) {
 }
 
 void Window::poll_events() {
-    auto end = std::chrono::steady_clock::now();
-    auto elapsed = end - start.value_or(end);
-    std::this_thread::sleep_for(frame_time - elapsed);
-    start = std::chrono::steady_clock::now();
+    if (frame_time.count() > std::numeric_limits<double>::epsilon()) {
+        auto end = std::chrono::steady_clock::now();
+        auto start = start_time.value_or(end);
+        std::chrono::duration<double> elapsed = end - start;
+
+        elapsed = std::chrono::duration<double>(std::fmod(elapsed.count(), frame_time.count()));
+
+        std::this_thread::sleep_for(frame_time - elapsed);
+
+        start_time = std::chrono::steady_clock::now();
+    }
     return glfwPollEvents();
 }
 
