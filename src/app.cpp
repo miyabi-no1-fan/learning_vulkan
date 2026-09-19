@@ -54,8 +54,9 @@ void App::run() {
 }
 
 void App::load_objects() {
+    Model::Builder builder{};
     {
-        std::vector<Model::Vertex> vertices{
+        builder.vertices = {
             // left face (white)
             { { -.5f, -.5f, -.5f }, { .9f, .9f, .9f } },
             { { -.5f, .5f, .5f }, { .9f, .9f, .9f } },
@@ -106,7 +107,7 @@ void App::load_objects() {
 
         };
         Object cube{};
-        cube.model = std::make_shared<Model>(device, vertices);
+        cube.model = std::make_shared<Model>(device, builder);
         cube.transform.scale = { .5f, .5f, .5f };
         cube.transform.translation = { .0f, .0f, 2.5f };
         cube.render = [](Object& object, float dt, const glm::mat4x4& projection_view) -> void {
@@ -123,7 +124,7 @@ void App::load_objects() {
     }
 
     {
-        std::vector<Model::Vertex> vertices{
+        builder.vertices = {
             { { -10.f, .5f, -10.f }, { .9f, .9f, .9f } },
             { { 10.f, .5f, 10.f }, { .9f, .9f, .9f } },
             { { -10.f, .5f, 10.f }, { .9f, .9f, .9f } },
@@ -132,7 +133,7 @@ void App::load_objects() {
             { { 10.f, .5f, 10.f }, { .9f, .9f, .9f } },
         };
         Object floor{};
-        floor.model = std::make_shared<Model>(device, vertices);
+        floor.model = std::make_shared<Model>(device, builder);
         floor.transform.scale = { .5f, .5f, .5f };
         floor.transform.translation = { .0f, .0f, 2.5f };
         floor.render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
