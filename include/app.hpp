@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 #include "descriptors.hpp"
 #include "device.hpp"
@@ -11,8 +10,15 @@
 #include "window.hpp"
 
 struct GlobalUniformBuffer {
-    alignas(16) glm::mat4x4 projection_view{ 1.f };
-    alignas(16) glm::vec3 light_direction = glm::normalize(glm::vec3(1.f, -3.f, -1.f));
+    glm::mat4x4 projection_view{ 1.f };
+    struct {
+        // ignore w
+        glm::vec4 position{ 0.f, -1.f, 0.f, 0.f };
+
+        // w is light intensity
+        glm::vec4 color{ 1.f, 1.f, 1.f, 1.f };
+        glm::vec4 ambient_color{ 1.f, 1.f, 1.f, .02f };
+    } light;
 };
 
 class App {
@@ -22,7 +28,7 @@ class App {
     Renderer renderer{ window, device };
 
     std::unique_ptr<DescriptorPool> global_descriptor_pool{};
-    std::vector<Object> objects{};
+    Object::Map objects{};
 
    public:
     static constexpr uint32_t WIDTH = 1920;

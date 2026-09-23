@@ -12,8 +12,8 @@
 #include "object.hpp"
 
 struct PushConstant {
-    alignas(16) glm::mat4x4 model_matrix;
-    alignas(16) glm::mat4x4 normal_matrix;
+    glm::mat4x4 model_matrix;
+    glm::mat4x4 normal_matrix;
 };
 static_assert(sizeof(PushConstant) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
 
@@ -70,7 +70,7 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
     );
 }
 
-void RenderSystem::render_objects(const FrameInfo& frame, std::vector<Object>& objects) {
+void RenderSystem::render_objects(const FrameInfo& frame) {
     pipeline->bind(frame.command_buffer);
 
     vkCmdBindDescriptorSets(
@@ -84,12 +84,16 @@ void RenderSystem::render_objects(const FrameInfo& frame, std::vector<Object>& o
         nullptr  //
     );
 
-    for (auto&& object : objects) {
-        object.render(object, frame.time);
+    for (auto&& kv : frame.objects) {
+        auto&& object = kv.second;
+        if (!object.model) continue;
+        if (object.render) object.render(object, frame.time);
+
         PushConstant push{
             .model_matrix = object.model_matrix(),
             .normal_matrix = object.normal_matrix(),
         };
+
         vkCmdPushConstants(
             frame.command_buffer,
             pipeline_layout,

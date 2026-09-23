@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <unordered_map>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -12,6 +13,7 @@
 class Object {
    public:
     using id_t = uint64_t;
+    using Map = std::unordered_map<id_t, Object>;
 
     Object() {
         static uint64_t id = 0;
@@ -35,7 +37,7 @@ class Object {
     glm::mat4x4 model_matrix();
     glm::mat4x4 normal_matrix();
 
-    std::function<void(Object& object, float dt)> render = [](Object& object, float dt) -> void { (void)object; (void)dt; };
+    std::function<void(Object& object, float dt)> render;
 
    private:
     id_t id;

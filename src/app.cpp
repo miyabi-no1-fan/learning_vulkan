@@ -40,7 +40,7 @@ void App::run() {
 
     auto global_descriptor_set_layout =
         DescriptorSetLayout::Builder(device)
-            .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+            .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
             .build();
 
     std::vector<VkDescriptorSet> global_descriptor_sets(SwapChain::MAX_FRAMES_IN_FLIGHT);
@@ -66,28 +66,32 @@ void App::run() {
     while (!window.should_close()) {
         window.poll_events();
 
-        FrameInfo frame{};
-
         auto new_time = std::chrono::steady_clock::now();
-        frame.time = std::min(std::chrono::duration<double>(new_time - current_time).count(), MAX_FRAME_TIME);
+        double frame_time = std::min(std::chrono::duration<double>(new_time - current_time).count(), MAX_FRAME_TIME);
         current_time = new_time;
 
-        camera_controller.move(window, frame.time, viewer_object);
+        camera_controller.move(window, frame_time, viewer_object);
         camera.set_view_yxz(viewer_object.translation, viewer_object.rotation);
-        camera.set_perspective_projection(50.f * std::numbers::pi / 180.f, renderer.get_aspect_ratio(), 0.1f, 10.f);
+        camera.set_perspective_projection(50.f * std::numbers::pi / 180.f, renderer.get_aspect_ratio(), 0.1f, 100.f);
 
         renderer.begin_frame();
         if (renderer.is_frame_in_progress()) {
-            frame.index = renderer.get_current_frame_index();
-            frame.command_buffer = renderer.get_current_command_buffer();
-            frame.global_descriptor_set = global_descriptor_sets[frame.index];
+            uint32_t frame_index = renderer.get_current_frame_index();
 
             GlobalUniformBuffer uniform_buffer{};
             uniform_buffer.projection_view = camera.get_projection() * camera.get_view();
-            uniform_buffers[frame.index]->write_to_buffer(&uniform_buffer);
+            uniform_buffers[frame_index]->write_to_buffer(&uniform_buffer);
+
+            FrameInfo frame{
+                .index = frame_index,
+                .time = frame_time,
+                .command_buffer = renderer.get_current_command_buffer(),
+                .global_descriptor_set = global_descriptor_sets[frame_index],
+                .objects = objects,
+            };
 
             renderer.begin_renderpass();
-            render_system.render_objects(frame, objects);
+            render_system.render_objects(frame);
             renderer.end_renderpass();
             renderer.end_frame();
         }
@@ -98,33 +102,32 @@ void App::run() {
     auto _ = vkDeviceWaitIdle(device.device());
 }
 
-Object create_floor(Device& device) {
-    Model::Builder builder{};
-    builder.vertices = {
-        { { -10.f, 1.0f, -10.f }, { .9f, .9f, .0f } },
-        { { 10.f, 1.0f, 10.f }, { .9f, .9f, .0f } },
-        { { -10.f, 1.0f, 10.f }, { .9f, .9f, .0f } },
-        { { 10.f, 1.0f, -10.f }, { .9f, .9f, .0f } },
-    };
-    builder.indices = { 0, 1, 2, 0, 3, 1 };
-    Object floor{};
-    floor.model = std::make_shared<Model>(device, builder);
-    floor.scale = { .5f, .5f, .5f };
-    floor.translation = { .0f, .0f, 2.5f };
-    return floor;
-}
-
 void App::load_objects() {
     std::vector<std::string> paths = {
-        // "models/colored_cube.obj",
-        // "models/cube.obj",
-        // "models/firee.obj",
-        // "models/flat_vase.obj",
+        "models/colored_cube.obj",
+        "models/cube.obj",
+        "models/firee.obj",
+        "models/flat_vase.obj",
         "models/smooth_vase.obj",
+        "models/floor.obj",
     };
-    for (auto&& path : paths) {
+    {
         Object obj{};
-        obj.model = Model::create_model_from_file(device, path);
-        objects.push_back(std::move(obj));
+        obj.model = Model::create_model_from_file(device, paths[4]);
+        obj.translation = { 1.f, .0f, .0f };
+        objects[obj.get_id()] = std::move(obj);
+    }
+    {
+        Object obj{};
+        obj.model = Model::create_model_from_file(device, paths[4]);
+        obj.translation = { -1.f, .0f, .0f };
+        objects[obj.get_id()] = std::move(obj);
+    }
+    {
+        Object obj{};
+        obj.model = Model::create_model_from_file(device, paths[5]);
+        obj.translation = { .0f, .0f, .0f };
+        obj.scale = { 5.f, 5.f, 5.f };
+        objects[obj.get_id()] = std::move(obj);
     }
 }

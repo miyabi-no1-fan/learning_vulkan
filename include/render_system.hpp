@@ -1,10 +1,8 @@
 #pragma once
 #include <memory>
-#include <vector>
 
 #include "device.hpp"
 #include "frame_info.hpp"
-#include "object.hpp"
 #include "pipeline.hpp"
 
 class RenderSystem {
@@ -20,7 +18,7 @@ class RenderSystem {
     RenderSystem(const RenderSystem&) = delete;
     RenderSystem& operator=(const RenderSystem&) = delete;
 
-    void render_objects(const FrameInfo& frame, std::vector<Object>& objects);
+    void render_objects(const FrameInfo& frame);
 
    private:
     static constexpr const char* VERTEX_SHADER_SRC = "shaders/dist/shader.vert.spv";
