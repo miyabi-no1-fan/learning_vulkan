@@ -1,12 +1,19 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
+#include "descriptors.hpp"
 #include "device.hpp"
 #include "object.hpp"
 #include "renderer.hpp"
 #include "window.hpp"
+
+struct GlobalUniformBuffer {
+    alignas(16) glm::mat4x4 projection_view{ 1.f };
+    alignas(16) glm::vec3 light_direction = glm::normalize(glm::vec3(1.f, -3.f, -1.f));
+};
 
 class App {
    private:
@@ -14,6 +21,7 @@ class App {
     Device device{ window };
     Renderer renderer{ window, device };
 
+    std::unique_ptr<DescriptorPool> global_descriptor_pool{};
     std::vector<Object> objects{};
 
    public:

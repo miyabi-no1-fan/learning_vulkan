@@ -1,6 +1,9 @@
 #include "render_system.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -9,13 +12,13 @@
 #include "object.hpp"
 
 struct PushConstant {
-    alignas(16) glm::mat4x4 transform_matrix;
+    alignas(16) glm::mat4x4 model_matrix;
     alignas(16) glm::mat4x4 normal_matrix;
 };
 static_assert(sizeof(PushConstant) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
 
-RenderSystem::RenderSystem(Device& device, VkRenderPass renderpass) : device(device) {
-    create_pipeline_layout();
+RenderSystem::RenderSystem(Device& device, VkRenderPass renderpass, VkDescriptorSetLayout descriptor_layout) : device(device) {
+    create_pipeline_layout(descriptor_layout);
     create_pipeline(renderpass);
 }
 
@@ -23,19 +26,21 @@ RenderSystem::~RenderSystem() {
     vkDestroyPipelineLayout(device.device(), pipeline_layout, nullptr);
 }
 
-void RenderSystem::create_pipeline_layout() {
+void RenderSystem::create_pipeline_layout(VkDescriptorSetLayout descriptor_layout) {
     VkPushConstantRange push_constant_range{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
         .size = sizeof(PushConstant),
     };
 
+    std::vector<VkDescriptorSetLayout> descriptor_layouts{ descriptor_layout };
+
     VkPipelineLayoutCreateInfo pipeline_layout_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = nullptr,
         .flags = 0,
-        .setLayoutCount = 0,
-        .pSetLayouts = nullptr,
+        .setLayoutCount = static_cast<uint32_t>(descriptor_layouts.size()),
+        .pSetLayouts = descriptor_layouts.data(),
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constant_range,
     };
@@ -65,19 +70,28 @@ void RenderSystem::create_pipeline(VkRenderPass renderpass) {
     );
 }
 
-void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Object>& objects, const Camera& camera, float dt) {
-    const glm::mat4x4 projection_view = camera.get_projection() * camera.get_view();
-    pipeline->bind(command_buffer);
-    for (auto&& object : objects) {
-        object.render(object, dt, projection_view);
+void RenderSystem::render_objects(const FrameInfo& frame, std::vector<Object>& objects) {
+    pipeline->bind(frame.command_buffer);
 
+    vkCmdBindDescriptorSets(
+        frame.command_buffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        pipeline_layout,
+        0,
+        1,
+        &frame.global_descriptor_set,
+        0,
+        nullptr  //
+    );
+
+    for (auto&& object : objects) {
+        object.render(object, frame.time);
         PushConstant push{
-            .transform_matrix = projection_view * object.transform_matrix(),
+            .model_matrix = object.model_matrix(),
             .normal_matrix = object.normal_matrix(),
         };
-
         vkCmdPushConstants(
-            command_buffer,
+            frame.command_buffer,
             pipeline_layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
@@ -85,7 +99,7 @@ void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Ob
             &push  //
         );
 
-        object.model->bind(command_buffer);
-        object.model->draw(command_buffer);
+        object.model->bind(frame.command_buffer);
+        object.model->draw(frame.command_buffer);
     }
 }

@@ -3,7 +3,7 @@
 // Matrix corrsponds to Offset * Ry * Rx * Rz * Scalar
 // Rotations correspond to Tait-bryan angles of Y(1), X(2), Z(3)
 // https://en.wikipedia.org/wiki/Euler_angles#Rotation_matrix
-glm::mat4x4 Object::transform_matrix() {
+glm::mat4x4 Object::model_matrix() {
     const float c3 = cos(rotation.z);
     const float s3 = sin(rotation.z);
     const float c2 = cos(rotation.x);

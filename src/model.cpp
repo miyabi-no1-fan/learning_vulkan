@@ -38,14 +38,7 @@ Model::Model(Device& device, const Builder& builder) : device(device) {
     create_index_buffers(builder.indices);
 }
 
-Model::~Model() {
-    vkDestroyBuffer(device.device(), vertex_buffer, nullptr);
-    vkFreeMemory(device.device(), vertex_buffer_memory, nullptr);
-    if (has_index_buffer) {
-        vkDestroyBuffer(device.device(), index_buffer, nullptr);
-        vkFreeMemory(device.device(), index_buffer_memory, nullptr);
-    }
-}
+Model::~Model() {}
 
 std::unique_ptr<Model> Model::create_model_from_file(Device& device, const std::string& path) {
     Builder builder{};
@@ -54,88 +47,78 @@ std::unique_ptr<Model> Model::create_model_from_file(Device& device, const std::
 }
 
 void Model::create_vertex_buffers(const std::vector<Vertex>& vertices) {
-    vertex_count = static_cast<uint32_t>(vertices.size());
-    assert(vertex_count >= 3 && "Vertex count must be at least 3");
-    VkDeviceSize buffer_size = vertex_count * sizeof(vertices[0]);
+    assert(vertices.size() >= 3 && "Vertex count must be at least 3");
 
-    VkBuffer staging_buffer{};
-    VkDeviceMemory staging_buffer_memory{};
-    device.createBuffer(
-        buffer_size,
+    Buffer staging_buffer(
+        device,
+        sizeof(vertices[0]),
+        vertices.size(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        staging_buffer,
-        staging_buffer_memory  //
+        1  //
     );
-    void* data{};
-    VkResult res = vkMapMemory(device.device(), staging_buffer_memory, 0, buffer_size, 0, &data);
-    if (res != VK_SUCCESS) throw std::runtime_error("Can't map memory. Vulkan Error code: " + std::to_string(res));
-    std::memcpy(data, vertices.data(), static_cast<size_t>(buffer_size));
-    vkUnmapMemory(device.device(), staging_buffer_memory);
 
-    device.createBuffer(
-        buffer_size,
+    staging_buffer.map();
+    staging_buffer.write_to_buffer((void*)vertices.data());
+    staging_buffer.unmap();
+
+    vertex_buffer = std::make_unique<Buffer>(
+        device,
+        sizeof(vertices[0]),
+        vertices.size(),
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        vertex_buffer,
-        vertex_buffer_memory  //
+        1  //
     );
 
-    device.copyBuffer(staging_buffer, vertex_buffer, buffer_size);
-
-    vkDestroyBuffer(device.device(), staging_buffer, nullptr);
-    vkFreeMemory(device.device(), staging_buffer_memory, nullptr);
+    device.copyBuffer(staging_buffer.get_buffer(), vertex_buffer->get_buffer(), vertex_buffer->get_buffer_size());
 }
 
 void Model::create_index_buffers(const std::vector<uint32_t>& indices) {
-    index_count = static_cast<uint32_t>(indices.size());
-    has_index_buffer = index_count > 0;
-    if (!has_index_buffer) return;
-    VkDeviceSize buffer_size = index_count * sizeof(indices[0]);
+    if (indices.empty()) {
+        index_buffer = nullptr;
+        return;
+    }
 
-    VkBuffer staging_buffer{};
-    VkDeviceMemory staging_buffer_memory{};
-    device.createBuffer(
-        buffer_size,
+    Buffer staging_buffer(
+        device,
+        sizeof(indices[0]),
+        indices.size(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        staging_buffer,
-        staging_buffer_memory  //
+        1  //
     );
-    void* data{};
-    VkResult res = vkMapMemory(device.device(), staging_buffer_memory, 0, buffer_size, 0, &data);
-    if (res != VK_SUCCESS) throw std::runtime_error("Can't map memory. Vulkan Error code: " + std::to_string(res));
-    std::memcpy(data, indices.data(), static_cast<size_t>(buffer_size));
-    vkUnmapMemory(device.device(), staging_buffer_memory);
 
-    device.createBuffer(
-        buffer_size,
+    staging_buffer.map();
+    staging_buffer.write_to_buffer((void*)indices.data());
+    staging_buffer.unmap();
+
+    index_buffer = std::make_unique<Buffer>(
+        device,
+        sizeof(indices[0]),
+        indices.size(),
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        index_buffer,
-        index_buffer_memory  //
+        1  //
     );
 
-    device.copyBuffer(staging_buffer, index_buffer, buffer_size);
-
-    vkDestroyBuffer(device.device(), staging_buffer, nullptr);
-    vkFreeMemory(device.device(), staging_buffer_memory, nullptr);
+    device.copyBuffer(staging_buffer.get_buffer(), index_buffer->get_buffer(), index_buffer->get_buffer_size());
 }
 
 void Model::draw(VkCommandBuffer command_buffer) {
-    if (has_index_buffer) {
-        vkCmdDrawIndexed(command_buffer, index_count, 1, 0, 0, 0);
+    if (index_buffer) {
+        vkCmdDrawIndexed(command_buffer, index_buffer->get_instance_count(), 1, 0, 0, 0);
     } else {
-        vkCmdDraw(command_buffer, vertex_count, 1, 0, 0);
+        vkCmdDraw(command_buffer, vertex_buffer->get_instance_count(), 1, 0, 0);
     }
 }
 
 void Model::bind(VkCommandBuffer command_buffer) {
-    VkBuffer buffers[] = { vertex_buffer };
+    VkBuffer buffers[] = { vertex_buffer->get_buffer() };
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(command_buffer, 0, 1, buffers, offsets);
-    if (has_index_buffer) {
-        vkCmdBindIndexBuffer(command_buffer, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+    if (index_buffer) {
+        vkCmdBindIndexBuffer(command_buffer, index_buffer->get_buffer(), 0, VK_INDEX_TYPE_UINT32);
     }
 }
 

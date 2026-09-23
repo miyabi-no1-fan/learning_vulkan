@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "buffer.hpp"
 #include "device.hpp"
 
 #define GLM_FORCE_RADIANS
@@ -14,14 +15,8 @@ class Model {
    private:
     Device& device;
 
-    VkBuffer vertex_buffer{};
-    VkDeviceMemory vertex_buffer_memory{};
-    uint32_t vertex_count{};
-
-    bool has_index_buffer = false;
-    VkBuffer index_buffer{};
-    VkDeviceMemory index_buffer_memory{};
-    uint32_t index_count{};
+    std::unique_ptr<Buffer> vertex_buffer{};
+    std::unique_ptr<Buffer> index_buffer{};
 
    public:
     struct Vertex {
