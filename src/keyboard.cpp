@@ -14,17 +14,17 @@ void Controller::move(const Window& window, float dt, Object& object) {
     prev_cursor_xpos = xpos;
     prev_cursor_ypos = ypos;
 
-    object.transform.rotation.y += cursor_speed * dt * dx;
-    object.transform.rotation.x -= cursor_speed * dt * dy;
+    object.rotation.y += cursor_speed * dt * dx;
+    object.rotation.x -= cursor_speed * dt * dy;
 
-    object.transform.rotation = {
-        std::fmodf(object.transform.rotation.x, std::numbers::pi * 2.f),
-        std::fmodf(object.transform.rotation.y, std::numbers::pi * 2.f),
-        std::fmodf(object.transform.rotation.z, std::numbers::pi * 2.f),
+    object.rotation = {
+        std::fmodf(object.rotation.x, std::numbers::pi * 2.f),
+        std::fmodf(object.rotation.y, std::numbers::pi * 2.f),
+        std::fmodf(object.rotation.z, std::numbers::pi * 2.f),
     };
 
-    float pitch = object.transform.rotation.x;
-    float yaw = object.transform.rotation.y;
+    float pitch = object.rotation.x;
+    float yaw = object.rotation.y;
 
     const glm::vec3 right = { std::cos(yaw), 0.f, -std::sin(yaw) };
     const glm::vec3 foward = { std::sin(yaw) * std::cos(pitch), -std::sin(pitch), std::cos(yaw) * std::cos(pitch) };
@@ -39,6 +39,6 @@ void Controller::move(const Window& window, float dt, Object& object) {
     if (glfwGetKey(window.get_GLFWwindow(), keys.down) == GLFW_PRESS) move -= up;
 
     if (glm::length(move) > std::numeric_limits<float>::epsilon()) {
-        object.transform.translation += move_speed * dt * glm::normalize(move);
+        object.translation += move_speed * dt * glm::normalize(move);
     }
 }

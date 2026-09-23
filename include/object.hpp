@@ -27,17 +27,17 @@ class Object {
 
     std::shared_ptr<Model> model{};
 
-    struct Transform {
-        // search for intrinsics rotation and extrinsics rotation
-        alignas(16) glm::vec3 rotation{};
-        alignas(16) glm::vec3 translation{};
-        alignas(16) glm::vec3 scale{ 1.f, 1.f, 1.f };
-        alignas(16) glm::mat4x4 projection_view{ 1.f };
-    } transform{};
-    static_assert(sizeof(Transform) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
+    // search for intrinsics rotation and extrinsics rotation
+    glm::vec3 rotation{};
+    glm::vec3 translation{};
+    glm::vec3 scale{ 1.f, 1.f, 1.f };
+    glm::mat4x4 projection_view{ 1.f };
+
+    glm::mat4x4 transform_matrix();
+    glm::mat4x4 normal_matrix();
 
     std::function<void(Object& object, float dt, const glm::mat4x4& projection_view)> render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
-        object.transform.projection_view = projection_view;
+        object.projection_view = projection_view;
     };
 
    private:

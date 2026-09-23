@@ -8,6 +8,12 @@
 
 #include "object.hpp"
 
+struct PushConstant {
+    alignas(16) glm::mat4x4 transform_matrix;
+    alignas(16) glm::mat4x4 normal_matrix;
+};
+static_assert(sizeof(PushConstant) <= 128, "The Vulkan spec only guaranteed 128 bytes of push constant");
+
 RenderSystem::RenderSystem(Device& device, VkRenderPass renderpass) : device(device) {
     create_pipeline_layout();
     create_pipeline(renderpass);
@@ -21,7 +27,7 @@ void RenderSystem::create_pipeline_layout() {
     VkPushConstantRange push_constant_range{
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         .offset = 0,
-        .size = sizeof(Object::Transform),
+        .size = sizeof(PushConstant),
     };
 
     VkPipelineLayoutCreateInfo pipeline_layout_info{
@@ -64,14 +70,21 @@ void RenderSystem::render_objects(VkCommandBuffer command_buffer, std::vector<Ob
     pipeline->bind(command_buffer);
     for (auto&& object : objects) {
         object.render(object, dt, projection_view);
+
+        PushConstant push{
+            .transform_matrix = projection_view * object.transform_matrix(),
+            .normal_matrix = object.normal_matrix(),
+        };
+
         vkCmdPushConstants(
             command_buffer,
             pipeline_layout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
-            sizeof(Object::Transform),
-            &object.transform  //
+            sizeof(PushConstant),
+            &push  //
         );
+
         object.model->bind(command_buffer);
         object.model->draw(command_buffer);
     }

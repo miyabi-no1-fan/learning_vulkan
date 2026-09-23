@@ -36,7 +36,7 @@ void App::run() {
 
         camera_controller.move(window, frame_time, viewer_object);
 
-        camera.set_view_yxz(viewer_object.transform.translation, viewer_object.transform.rotation);
+        camera.set_view_yxz(viewer_object.translation, viewer_object.rotation);
         camera.set_perspective_projection(50.f * std::numbers::pi / 180.f, renderer.get_aspect_ratio(), 0.1f, 10.f);
 
         renderer.begin_frame();
@@ -63,20 +63,20 @@ Object create_floor(Device& device) {
     builder.indices = { 0, 1, 2, 0, 3, 1 };
     Object floor{};
     floor.model = std::make_shared<Model>(device, builder);
-    floor.transform.scale = { .5f, .5f, .5f };
-    floor.transform.translation = { .0f, .0f, 2.5f };
+    floor.scale = { .5f, .5f, .5f };
+    floor.translation = { .0f, .0f, 2.5f };
     floor.render = [](Object& object, float _, const glm::mat4x4& projection_view) -> void {
-        object.transform.projection_view = projection_view;
+        object.projection_view = projection_view;
     };
     return floor;
 }
 
 void App::load_objects() {
     std::vector<std::string> paths = {
-        "models/colored_cube.obj",
-        "models/cube.obj",
-        "models/firee.obj",
-        "models/flat_vase.obj",
+        // "models/colored_cube.obj",
+        // "models/cube.obj",
+        // "models/firee.obj",
+        // "models/flat_vase.obj",
         "models/smooth_vase.obj",
     };
     for (auto&& path : paths) {
