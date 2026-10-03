@@ -1,0 +1,19 @@
+#version 450
+
+layout(local_size_x = 2, local_size_y = 2) in;
+
+layout(binding = 0) buffer BufA { float a[]; };
+layout(binding = 1) buffer BufB { float b[]; };
+layout(binding = 2) buffer BufOut { float c[]; };
+
+layout(push_constant) uniform PushConstants {
+    uint count;
+}
+push_constant;
+
+void main() {
+    uint width = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    uint i = gl_GlobalInvocationID.y * width + gl_GlobalInvocationID.x;
+    if (i >= push_constant.count) return;
+    c[i] = a[i] - b[i];
+}
