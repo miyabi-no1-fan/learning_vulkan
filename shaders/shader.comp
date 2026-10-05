@@ -1,0 +1,50 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba8ui) uniform readonly uimage2D src_image;
+layout(set = 0, binding = 1, rgba8ui) uniform writeonly uimage2D dst_image;
+layout(set = 0, binding = 2, std140) uniform readonly GlobalInfo {
+    uint src_width;
+    uint src_height;
+    float src_width_center;
+    float src_height_center;
+
+    uint dst_width;
+    uint dst_height;
+    float dst_width_center;
+    float dst_height_center;
+
+    // tightly packed mat2x2 is a vec4
+    vec4 _inverse_matrix;
+
+    uvec4 background_color;
+};
+
+layout(push_constant) uniform PushConstants {
+    uint count;
+}
+push_constant;
+
+void main() {
+    ivec2 dst_coord = ivec2(gl_GlobalInvocationID.xy);
+    if (dst_coord.x >= dst_width || dst_coord.y >= dst_height) return;
+
+    // well supprise, glsl use column-major...
+    mat2 inverse_matrix = transpose(mat2(_inverse_matrix));
+
+    vec2 centered_dst_coord = vec2(float(dst_coord.x) - dst_width_center,
+                                   dst_height_center - float(dst_coord.y));
+
+    vec2 centered_src_coord = inverse_matrix * centered_dst_coord;
+
+    ivec2 src_coord = ivec2(floor(
+        vec2(centered_src_coord.x + src_width_center,
+             src_height_center - centered_src_coord.y)));
+
+    if (0 <= src_coord.x && src_coord.x < src_width && 0 <= src_coord.y && src_coord.y < src_height) {
+        imageStore(dst_image, dst_coord, imageLoad(src_image, src_coord));
+    } else {
+        imageStore(dst_image, dst_coord, background_color);
+    }
+}
