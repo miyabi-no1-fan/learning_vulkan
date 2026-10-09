@@ -72,9 +72,7 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
         v->map();
     }
 
-    staged_image.resize(swap_chain->image_count());
     image_buffer.resize(swap_chain->image_count());
-    image_sampler.resize(swap_chain->image_count());
     ctx.single_time_commands([this](const vk::UniqueCommandBuffer& cmd) {
         for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
             image_buffer[i] = std::make_unique<Image>(
@@ -91,39 +89,41 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
                 {},
                 vk::PipelineStageFlagBits::eTopOfPipe,
                 vk::PipelineStageFlagBits::eAllCommands);
-            image_sampler[i] = ctx.device->createSamplerUnique(vk::SamplerCreateInfo(
-                {},
-                vk::Filter::eLinear,
-                vk::Filter::eLinear,
-                vk::SamplerMipmapMode::eNearest,
-                vk::SamplerAddressMode::eClampToBorder,
-                vk::SamplerAddressMode::eClampToBorder,
-                vk::SamplerAddressMode::eClampToBorder,
-                0,
-                vk::False,
-                0,
-                vk::False,
-                vk::CompareOp::eNever,
-                0,
-                0,
-                vk::BorderColor::eFloatOpaqueBlack,
-                vk::False));
-            staged_image[i] = std::make_unique<Buffer>(
-                ctx,
-                4,  // rgba8
-                this->width * this->height,
-                vk::BufferUsageFlagBits::eTransferSrc,
-                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-            staged_image[i]->map();
         }
     });
+
+    image_sampler = ctx.device->createSamplerUnique(vk::SamplerCreateInfo(
+        {},
+        vk::Filter::eLinear,
+        vk::Filter::eLinear,
+        vk::SamplerMipmapMode::eNearest,
+        vk::SamplerAddressMode::eClampToBorder,
+        vk::SamplerAddressMode::eClampToBorder,
+        vk::SamplerAddressMode::eClampToBorder,
+        0,
+        vk::False,
+        0,
+        vk::False,
+        vk::CompareOp::eNever,
+        0,
+        0,
+        vk::BorderColor::eFloatOpaqueBlack,
+        vk::False));
+
+    staged_image = std::make_unique<Buffer>(
+        ctx,
+        4,  // rgba8
+        this->width * this->height,
+        vk::BufferUsageFlagBits::eTransferSrc,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+    staged_image->map();
 
     descriptor_sets.resize(swap_chain->image_count());
     for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
         descriptor_sets[i] =
             DescriptorWriter(ctx, *descriptor_set_layout, *descriptor_pool)
                 .write_buffer(0, global_ubo[i]->descriptor_info())
-                .write_image(1, image_buffer[i]->descriptor_info(image_sampler[i]))
+                .write_image(1, image_buffer[i]->descriptor_info(image_sampler))
                 .build();
     }
 }
@@ -151,7 +151,7 @@ void App::render(void* data) {
     window.poll_events();
     if (auto i = acquire_next_frame()) {
         update_global_ubo(*i);
-        std::memcpy(staged_image[*i]->get_mapped_memory(), data, width * height * 4);
+        std::memcpy(staged_image->get_mapped_memory(), data, width * height * 4);
         record_command_buffer(*i);
         submit_frame(*i);
     }
@@ -206,14 +206,14 @@ void App::record_command_buffer(std::uint32_t i) {
             cmd->pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eTransfer, {}, before, {}, {});
 
             // clang-format off
-                    vk::BufferImageCopy region(
-                        0, 0, 0,
-                        vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-                        { 0, 0, 0 },
-                        image_buffer[i]->get_extent()
-                    );
+            vk::BufferImageCopy region(
+                0, 0, 0,
+                vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+                { 0, 0, 0 },
+                image_buffer[i]->get_extent()
+            );
             // clang-format on
-            cmd->copyBufferToImage(*staged_image[i]->get_buffer(), *image_buffer[i]->get_image(), vk::ImageLayout::eGeneral, region);
+            cmd->copyBufferToImage(*staged_image->get_buffer(), *image_buffer[i]->get_image(), vk::ImageLayout::eGeneral, region);
 
             vk::MemoryBarrier after(vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead);
             cmd->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, after, {}, {});
