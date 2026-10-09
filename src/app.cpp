@@ -14,8 +14,8 @@
 
 #include "buffer.hpp"
 #include "descriptors.hpp"
+#include "image.hpp"
 #include "pipeline.hpp"
-#include "vulkan/vulkan.hpp"
 #include "window.hpp"
 
 namespace aglea {
@@ -27,13 +27,13 @@ App::App() {
         DescriptorPool::Builder(ctx)
             .set_max_sets(swap_chain->image_count())
             .add_pool_size(vk::DescriptorType::eUniformBuffer, swap_chain->image_count())
-            .add_pool_size(vk::DescriptorType::eUniformTexelBuffer, swap_chain->image_count())
+            .add_pool_size(vk::DescriptorType::eSampledImage, swap_chain->image_count())
             .build();
 
     descriptor_set_layout =
         DescriptorSetLayout::Builder(ctx)
             .add_binding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-            .add_binding(1, vk::DescriptorType::eUniformTexelBuffer, vk::ShaderStageFlagBits::eFragment)
+            .add_binding(1, vk::DescriptorType::eSampledImage, vk::ShaderStageFlagBits::eFragment)
             .build();
 
     graphics_pipeline_layout =
@@ -95,52 +95,120 @@ void App::run() {
         v->map();
     }
 
-    std::vector<std::unique_ptr<Buffer>> image_buffer(swap_chain->image_count());
-    std::vector<vk::UniqueBufferView> image_view(swap_chain->image_count());
-    for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
-        image_buffer[i] = std::make_unique<Buffer>(
-            ctx,
-            4,                                       // sizeof rgba8
-            image.get_width() * image.get_height(),  // pixels count
-            vk::BufferUsageFlagBits::eUniformTexelBuffer,
-            vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-        image_buffer[i]->map();
-        image_view[i] = ctx.device->createBufferViewUnique(vk::BufferViewCreateInfo(
-            {},
-            *image_buffer[i]->get_buffer(),
-            vk::Format::eR8G8B8A8Unorm,
-            0,
-            vk::WholeSize));
-    }
+    std::vector<std::unique_ptr<Buffer>> staged_image(swap_chain->image_count());
+    std::vector<std::unique_ptr<Image>> image_buffer(swap_chain->image_count());
+    ctx.single_time_commands([&](const vk::UniqueCommandBuffer& cmd) {
+        for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
+            image_buffer[i] = std::make_unique<Image>(
+                ctx,
+                vk::ImageType::e2D,
+                vk::Format::eR8G8B8A8Unorm,
+                vk::Extent3D(image.get_width(), image.get_height(), 1),
+                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+                vk::MemoryPropertyFlagBits::eDeviceLocal);
+            image_buffer[i]->transition_image_layout(
+                cmd,
+                vk::ImageLayout::eGeneral,
+                {},
+                {},
+                vk::PipelineStageFlagBits::eTopOfPipe,
+                vk::PipelineStageFlagBits::eAllCommands);
+            staged_image[i] = std::make_unique<Buffer>(
+                ctx,
+                4,  // rgba8
+                image.get_width() * image.get_height(),
+                vk::BufferUsageFlagBits::eTransferSrc,
+                vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+            staged_image[i]->map();
+        }
+    });
 
     std::vector<vk::UniqueDescriptorSet> descriptor_sets(swap_chain->image_count());
     for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
         descriptor_sets[i] =
             DescriptorWriter(ctx, *descriptor_set_layout, *descriptor_pool)
                 .write_buffer(0, global_ubo[i]->descriptor_info())
-                .write_buffer(1, image_buffer[i]->descriptor_info(), *image_view[i])
+                .write_image(1, image_buffer[i]->descriptor_info())
                 .build();
     }
 
     while (!window.should_close()) {
         window.poll_events();
         if (auto i = acquire_next_frame()) {
-            auto extent = window.get_extent();
-            float width_ratio = static_cast<float>(extent.width) / static_cast<float>(image.get_width());
-            float height_ratio = static_cast<float>(extent.height) / static_cast<float>(image.get_height());
-            auto* info = static_cast<GlobalUBO*>(global_ubo[*i]->get_mapped_memory());
-            if (width_ratio < height_ratio) {
-                info->scale_width = 1;
-                info->scale_height = image.get_height() * width_ratio / extent.height;
-            } else {
-                info->scale_width = image.get_width() * height_ratio / extent.width;
-                info->scale_height = 1;
+            {  // update the global_ubo
+                auto extent = window.get_extent();
+                float width_ratio = static_cast<float>(extent.width) / static_cast<float>(image.get_width());
+                float height_ratio = static_cast<float>(extent.height) / static_cast<float>(image.get_height());
+                auto* info = static_cast<GlobalUBO*>(global_ubo[*i]->get_mapped_memory());
+                if (width_ratio < height_ratio) {
+                    info->scale = { 1, image.get_height() * width_ratio / extent.height };
+                } else {
+                    info->scale = { image.get_width() * height_ratio / extent.width, 1 };
+                }
             }
-            info->width = image.get_width();
-            info->height = image.get_height();
-            std::memcpy(image_buffer[*i]->get_mapped_memory(), image.data(), image.get_size());
 
-            record_command_buffer(*i, descriptor_sets[*i]);
+            // render the image, this part is a must do, update the data per frame
+            std::memcpy(staged_image[*i]->get_mapped_memory(), image.data(), image.get_size());
+
+            // record command buffer
+            if (!command_buffers[*i].first) {
+                auto& cmd = command_buffers[*i].second;
+                cmd->begin(vk::CommandBufferBeginInfo());
+
+                {
+                    vk::MemoryBarrier before({}, vk::AccessFlagBits::eTransferWrite);
+                    cmd->pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader, vk::PipelineStageFlagBits::eTransfer, {}, before, {}, {});
+
+                    // clang-format off
+                    vk::BufferImageCopy region(
+                        0, 0, 0,
+                        vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+                        { 0, 0, 0 },
+                        image_buffer[*i]->get_extent()
+                    );
+                    // clang-format on
+                    cmd->copyBufferToImage(*staged_image[*i]->get_buffer(), *image_buffer[*i]->get_image(), vk::ImageLayout::eGeneral, region);
+
+                    vk::MemoryBarrier after(vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead);
+                    cmd->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, after, {}, {});
+                }
+
+                vk::ClearValue clear_values[2];
+                clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
+                clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+                cmd->beginRenderPass(
+                    vk::RenderPassBeginInfo(
+                        *swap_chain->get_render_pass(),
+                        *swap_chain->get_frame_buffer(*i),
+                        vk::Rect2D({ 0, 0 }, swap_chain->get_swap_chain_extent()),
+                        clear_values),
+                    vk::SubpassContents::eInline);
+                auto extent = swap_chain->get_swap_chain_extent();
+                vk::Viewport viewport(
+                    0.0f,
+                    0.0f,
+                    static_cast<float>(extent.width),
+                    static_cast<float>(extent.height),
+                    0.0f,
+                    1.0f);
+                vk::Rect2D scissor = { { 0, 0 }, extent };
+                cmd->setViewport(0, viewport);
+                cmd->setScissor(0, scissor);
+
+                graphics_pipeline->bind(cmd);
+                cmd->bindDescriptorSets(
+                    vk::PipelineBindPoint::eGraphics,
+                    *graphics_pipeline_layout,
+                    0,
+                    *descriptor_sets[*i],
+                    {});
+                cmd->draw(4, 1, 0, 0);
+
+                cmd->endRenderPass();
+                cmd->end();
+                command_buffers[*i].first = true;
+            }
+
             submit_frame(*i);
         }
     }
@@ -169,47 +237,6 @@ void App::submit_frame(std::uint32_t i) {
         for (auto&& p : command_buffers) p.first = false;
     } else if (res != vk::Result::eSuccess) {
         throw std::runtime_error("Can't present swap chain image. Vulkan Error code: " + std::to_string((int)res));
-    }
-}
-
-void App::record_command_buffer(std::uint32_t i, const vk::UniqueDescriptorSet& descriptor_set) {
-    if (!command_buffers[i].first) {
-        auto& cmd = command_buffers[i].second;
-        cmd->begin(vk::CommandBufferBeginInfo());
-        vk::ClearValue clear_values[2];
-        clear_values[0].color = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 0.0f);
-        clear_values[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
-        cmd->beginRenderPass(
-            vk::RenderPassBeginInfo(
-                *swap_chain->get_render_pass(),
-                *swap_chain->get_frame_buffer(i),
-                vk::Rect2D({ 0, 0 }, swap_chain->get_swap_chain_extent()),
-                clear_values),
-            vk::SubpassContents::eInline);
-        auto extent = swap_chain->get_swap_chain_extent();
-        vk::Viewport viewport(
-            0.0f,
-            0.0f,
-            static_cast<float>(extent.width),
-            static_cast<float>(extent.height),
-            0.0f,
-            1.0f);
-        vk::Rect2D scissor = { { 0, 0 }, extent };
-        cmd->setViewport(0, viewport);
-        cmd->setScissor(0, scissor);
-
-        graphics_pipeline->bind(cmd);
-        cmd->bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics,
-            *graphics_pipeline_layout,
-            0,
-            *descriptor_set,
-            {});
-        cmd->draw(4, 1, 0, 0);
-
-        cmd->endRenderPass();
-        cmd->end();
-        command_buffers[i].first = true;
     }
 }
 

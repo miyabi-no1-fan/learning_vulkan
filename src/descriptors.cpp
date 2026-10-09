@@ -8,8 +8,6 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
-#include "vulkan/vulkan.hpp"
-
 namespace aglea {
 
 // *************** Descriptor Set Layout Builder *********************

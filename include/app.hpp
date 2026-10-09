@@ -9,6 +9,7 @@
 
 #include "context.hpp"
 #include "descriptors.hpp"
+#include "matrix.hpp"
 #include "pipeline.hpp"
 #include "swap_chain.hpp"
 #include "window.hpp"
@@ -16,10 +17,7 @@
 namespace aglea {
 
 struct GlobalUBO {
-    float scale_width;
-    float scale_height;
-    int width;
-    int height;
+    vec2 scale;
 };
 
 class App {

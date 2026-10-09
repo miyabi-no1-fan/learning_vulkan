@@ -9,7 +9,6 @@
 
 #include "context.hpp"
 #include "swap_chain.hpp"
-#include "vulkan/vulkan.hpp"
 
 namespace aglea {
 

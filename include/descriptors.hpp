@@ -7,7 +7,6 @@
 #include <vulkan/vulkan.hpp>
 
 #include "context.hpp"
-#include "vulkan/vulkan.hpp"
 
 namespace aglea {
 
