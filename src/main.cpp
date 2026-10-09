@@ -27,8 +27,8 @@ int main(int argc, const char* argv[]) try {
         return 1;
     }
 
-    if (std::memcmp(argv[1], "--help", sizeof("--help")) ||
-        std::memcmp(argv[1], "-h", sizeof("-h"))) {
+    if (std::memcmp(argv[1], "--help", sizeof("--help")) == 0 ||
+        std::memcmp(argv[1], "-h", sizeof("-h")) == 0) {
         help();
         return 0;
     }
