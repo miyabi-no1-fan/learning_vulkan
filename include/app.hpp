@@ -7,8 +7,10 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
+#include "buffer.hpp"
 #include "context.hpp"
 #include "descriptors.hpp"
+#include "image.hpp"
 #include "matrix.hpp"
 #include "pipeline.hpp"
 #include "swap_chain.hpp"
@@ -28,6 +30,9 @@ class App {
     static constexpr const char* NAME = "Aglea";
 
    private:
+    std::uint32_t width;  // the video's width and height
+    std::uint32_t height;
+
     Window window{ DEFAULT_WIDTH, DEFAULT_HEIGHT, NAME, 1.0 / 60.0 };
     Context ctx{ window };
 
@@ -39,9 +44,18 @@ class App {
     vk::UniquePipelineLayout graphics_pipeline_layout;
     std::unique_ptr<GraphicsPipeline> graphics_pipeline;
 
+    std::vector<std::unique_ptr<Buffer>> global_ubo;
+    std::vector<std::unique_ptr<Buffer>> staged_image;
+    std::vector<std::unique_ptr<Image>> image_buffer;
+    std::vector<vk::UniqueDescriptorSet> descriptor_sets;
+
    public:
-    App();
-    void run();
+    App(std::uint32_t width, std::uint32_t height);
+    ~App();
+
+    // assume data size = width * height * 4 bytes
+    void render(void* data);
+    bool should_close() { return window.should_close(); }
 
     App(const App&) = delete;
     App& operator=(const App&) = delete;
@@ -50,7 +64,8 @@ class App {
 
    private:
     void create_swap_chain();
-    void record_command_buffer(std::uint32_t i, const vk::UniqueDescriptorSet& descriptor_set);
+    void update_global_ubo(std::size_t i);
+    void record_command_buffer(std::uint32_t i);
     std::optional<std::uint32_t> acquire_next_frame();
     void submit_frame(std::uint32_t i);
 };
