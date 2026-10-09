@@ -1,5 +1,4 @@
 #version 450
-#extension GL_EXT_samplerless_texture_functions : require
 
 layout(location = 0) in vec2 color;
 

@@ -8,8 +8,6 @@
 #include <vector>
 #include <vulkan/vulkan.hpp>
 
-#include "object.hpp"
-
 namespace aglea {
 
 void GraphicsPipeline::bind(const vk::UniqueCommandBuffer& command_buffer) {
@@ -63,9 +61,7 @@ GraphicsPipeline::GraphicsPipeline(
         "main",
     };
 
-    auto binding_descriptions = Vertex::get_binding_descriptions();
-    auto attribute_descriptions = Vertex::get_attribute_descriptions();
-    vk::PipelineVertexInputStateCreateInfo vertex_input_info({}, binding_descriptions, attribute_descriptions);
+    vk::PipelineVertexInputStateCreateInfo vertex_input_info{};
 
     vk::GraphicsPipelineCreateInfo create_info(
         {},
