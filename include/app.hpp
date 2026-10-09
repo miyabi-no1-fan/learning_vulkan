@@ -47,6 +47,7 @@ class App {
     std::vector<std::unique_ptr<Buffer>> global_ubo;
     std::vector<std::unique_ptr<Buffer>> staged_image;
     std::vector<std::unique_ptr<Image>> image_buffer;
+    std::vector<vk::UniqueSampler> image_sampler;
     std::vector<vk::UniqueDescriptorSet> descriptor_sets;
 
    public:

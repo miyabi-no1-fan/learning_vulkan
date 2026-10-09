@@ -28,13 +28,13 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
         DescriptorPool::Builder(ctx)
             .set_max_sets(swap_chain->image_count())
             .add_pool_size(vk::DescriptorType::eUniformBuffer, swap_chain->image_count())
-            .add_pool_size(vk::DescriptorType::eSampledImage, swap_chain->image_count())
+            .add_pool_size(vk::DescriptorType::eCombinedImageSampler, swap_chain->image_count())
             .build();
 
     descriptor_set_layout =
         DescriptorSetLayout::Builder(ctx)
             .add_binding(0, vk::DescriptorType::eUniformBuffer, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment)
-            .add_binding(1, vk::DescriptorType::eSampledImage, vk::ShaderStageFlagBits::eFragment)
+            .add_binding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build();
 
     graphics_pipeline_layout =
@@ -74,6 +74,7 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
 
     staged_image.resize(swap_chain->image_count());
     image_buffer.resize(swap_chain->image_count());
+    image_sampler.resize(swap_chain->image_count());
     ctx.single_time_commands([this](const vk::UniqueCommandBuffer& cmd) {
         for (std::size_t i = 0; i < swap_chain->image_count(); i++) {
             image_buffer[i] = std::make_unique<Image>(
@@ -90,6 +91,23 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
                 {},
                 vk::PipelineStageFlagBits::eTopOfPipe,
                 vk::PipelineStageFlagBits::eAllCommands);
+            image_sampler[i] = ctx.device->createSamplerUnique(vk::SamplerCreateInfo(
+                {},
+                vk::Filter::eLinear,
+                vk::Filter::eLinear,
+                vk::SamplerMipmapMode::eNearest,
+                vk::SamplerAddressMode::eClampToBorder,
+                vk::SamplerAddressMode::eClampToBorder,
+                vk::SamplerAddressMode::eClampToBorder,
+                0,
+                vk::False,
+                0,
+                vk::False,
+                vk::CompareOp::eNever,
+                0,
+                0,
+                vk::BorderColor::eFloatOpaqueBlack,
+                vk::False));
             staged_image[i] = std::make_unique<Buffer>(
                 ctx,
                 4,  // rgba8
@@ -105,7 +123,7 @@ App::App(std::uint32_t width, std::uint32_t height) : width(width), height(heigh
         descriptor_sets[i] =
             DescriptorWriter(ctx, *descriptor_set_layout, *descriptor_pool)
                 .write_buffer(0, global_ubo[i]->descriptor_info())
-                .write_image(1, image_buffer[i]->descriptor_info())
+                .write_image(1, image_buffer[i]->descriptor_info(image_sampler[i]))
                 .build();
     }
 }
